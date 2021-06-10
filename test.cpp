@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <chrono>
 #include <iostream>
+#include "fit_ellipse_batched.h"
 
 using namespace cv;
 using namespace std;
