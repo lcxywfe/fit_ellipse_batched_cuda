@@ -42,43 +42,41 @@ private:
 
 int main() {
 
-	Mat img = imread("a.png", CV_8UC1);
+	Mat img = imread("image.png", CV_8UC1);
     threshold(img, img, 127,255,CV_THRESH_BINARY);
     vector<vector<Point> > contours;
     vector<Vec4i> hierarchy;
     findContours(img, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
     vector<RotatedRect> ellipses;
 
-    Timer timer;
-            timer.reset();
-            timer.start();
-    {
-    Mat img(Size(800,500), CV_8UC3);
-    for (unsigned i = 0; i<contours.size(); i++) {
-        if (contours[i].size() >= 6) {
-            printf("%zu\n", contours[i].size());
-            RotatedRect temp = fitEllipse(Mat(contours[i]));
 
-            // if (area(temp) <= 1.1 * contourArea(contours[i])) {
-                // ellipses.push_back(temp);
+    {
+        Timer timer;
+        timer.reset();
+        timer.start();
+        Mat img(Size(800,500), CV_8UC3);
+        for (unsigned i = 0; i<contours.size(); i++) {
+            if (contours[i].size() >= 6) {
+                printf("%zu\n", contours[i].size());
+                RotatedRect temp = fitEllipse(Mat(contours[i]));
                 drawContours(img, contours, i, Scalar(255,0,0), -1, 8);
                 ellipse(img, temp, Scalar(0,255,255), 2, 8);
-
-                // imshow("Ellipses", img);
-                // waitKey();
-            // } else {
-            //     //cout << "Reject ellipse " << i << endl;
-            //     drawContours(img, contours, i, Scalar(0,255,0), -1, 8);
-            //     ellipse(img, temp, Scalar(255,255,0), 2, 8);
-            //     imshow("Ellipses", img);
-            //     waitKey();
-            // }
+            }
+            break;
         }
-    }
-    timer.stop();
-    std::cout << "time: " << timer.get_time_in_ms() << std::endl;
+        timer.stop();
+        std::cout << "time: " << timer.get_time_in_ms() << std::endl;
 
-    imwrite("out.png", img);
+        imwrite("out.png", img);
+    }
+
+    {
+        std::vector<std::vector<Point2f>> batched_points;
+        batched_points.push_back(std::vector<Point2f>(0));
+        for (int i = 0; i < contours[0].size(); ++i) {
+            batched_points.back().emplace_back(contours[0][i].x, contours[0][i].y);
+        }
+        fit_ellipse_batched(batched_points);
     }
     return 0;
 }
