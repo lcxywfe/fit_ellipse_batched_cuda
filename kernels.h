@@ -10,5 +10,7 @@ void get_centers(float* points, float* centers, int batch_size,
 
 void fill_param(float* points, float* centers, double* A, double* b,
                 int batch_size, int sample_szie);
-}
 
+void element_wise_div(double* A, double* B, int size);
+
+}  // namespace kernels

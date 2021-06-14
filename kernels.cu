@@ -43,6 +43,17 @@ __global__ void fill_param_kernel(float* points, float* centers, double* A,
 
 }
 
+__global__ void element_wise_div_kernel(double* A, double* B, int size) {
+    const int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index >= size)
+        return;
+    double val = B[index];
+    if (val == 0)
+        A[index] = 0;
+    else
+        A[index] /= val;
+}
+
 }
 
 void kernels::get_centers(float* points, float* centers, int batch_size,
@@ -53,9 +64,15 @@ void kernels::get_centers(float* points, float* centers, int batch_size,
 }
 
 void kernels::fill_param(float* points, float* centers, double* A, double* b,
-                         double x, int batch_size, int sample_size) {
-    return;
+                         int batch_size, int sample_size) {
+    int grid =
+            (batch_size * sample_size + CUDA_BLOCK_SIZE - 1) / CUDA_BLOCK_SIZE;
+    fill_param_kernel<<<grid, CUDA_BLOCK_SIZE>>>(points, centers, A, b,
+                                                 batch_size, sample_size);
 }
 
+void kernels::element_wise_div(double* A, double* B, int size) {
+    int grid = (size + CUDA_BLOCK_SIZE - 1) / CUDA_BLOCK_SIZE;
+    element_wise_div_kernel<<<grid, CUDA_BLOCK_SIZE>>>(A, B, size);
 }
 

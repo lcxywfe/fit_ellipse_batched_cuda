@@ -1,5 +1,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <glog/logging.h>
 #include <stdio.h>
 #include <assert.h>
 #include <chrono>
@@ -58,11 +59,12 @@ int main() {
         for (unsigned i = 0; i<contours.size(); i++) {
             if (contours[i].size() >= 6) {
                 printf("%zu\n", contours[i].size());
+                while (contours[i].size() > 32)
+                    contours[i].pop_back();
                 RotatedRect temp = fitEllipse(Mat(contours[i]));
                 drawContours(img, contours, i, Scalar(255,0,0), -1, 8);
                 ellipse(img, temp, Scalar(0,255,255), 2, 8);
             }
-            break;
         }
         timer.stop();
         std::cout << "time: " << timer.get_time_in_ms() << std::endl;
@@ -72,11 +74,15 @@ int main() {
 
     {
         std::vector<std::vector<Point2f>> batched_points;
-        batched_points.push_back(std::vector<Point2f>(0));
-        for (int i = 0; i < contours[0].size(); ++i) {
-            batched_points.back().emplace_back(contours[0][i].x, contours[0][i].y);
+
+        for (int b  = 0; b < contours.size(); ++b) {
+            batched_points.push_back(std::vector<Point2f>(0));
+            for (int i = 0; i < min(int(contours[b].size()), 32); ++i) {
+                batched_points.back().emplace_back(contours[b][i].x, contours[b][i].y);
+            }
         }
-        fit_ellipse_batched(batched_points);
+        BatchedEllipseFitter fitter;
+        fitter.fit(batched_points);
     }
     return 0;
 }
