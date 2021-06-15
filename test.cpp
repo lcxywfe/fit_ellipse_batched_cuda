@@ -81,8 +81,14 @@ int main() {
                 batched_points.back().emplace_back(contours[b][i].x, contours[b][i].y);
             }
         }
+        Timer timer;
+        timer.reset();
         BatchedEllipseFitter fitter;
+        timer.start();
         fitter.fit(batched_points);
+        timer.stop();
+        std::cout << "time: " << timer.get_time_in_ms() << std::endl;
+
     }
     return 0;
 }

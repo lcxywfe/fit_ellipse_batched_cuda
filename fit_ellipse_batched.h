@@ -5,7 +5,7 @@
 
 class BatchedEllipseFitter {
 public:
-    BatchedEllipseFitter();
+    BatchedEllipseFitter() { init(); }
     ~BatchedEllipseFitter();
     std::vector<cv::RotatedRect> fit(
             std::vector<std::vector<cv::Point2f>> batched_points);
@@ -17,9 +17,11 @@ private:
     void solve(double* A, double* b, double* x, int x_num, int batch_size,
                int sample_size);
 
-private:
-    cusolverDnHandle_t cusolver_handle_;
-    gesvdjInfo_t gesvdj_params_;
-    cublasHandle_t cublas_handle_;
+    static void init();
 
+private:
+    static cusolverDnHandle_t cusolver_handle_;
+    static cublasHandle_t cublas_handle_;
+    static gesvdjInfo_t gesvdj_params_;
+    static bool inited_;
 };

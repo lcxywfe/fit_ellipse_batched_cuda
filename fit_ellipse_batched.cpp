@@ -1,6 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include <glog/logging.h>
-# include <iostream>
+#include <iostream>
+#include <mutex>
 #include <cublas_v2.h>
 #include <cusolverDn.h>
 #include "fit_ellipse_batched.h"
@@ -26,9 +27,20 @@ void print_cuda(T* data, int size, int stride) {
 
 }
 
+cusolverDnHandle_t BatchedEllipseFitter::cusolver_handle_ = NULL;
+cublasHandle_t BatchedEllipseFitter::cublas_handle_ = NULL;
+gesvdjInfo_t BatchedEllipseFitter::gesvdj_params_ = NULL;
+bool BatchedEllipseFitter::inited_ = false;
 
 
-BatchedEllipseFitter::BatchedEllipseFitter() {
+void BatchedEllipseFitter::init() {
+    static std::mutex mutex;
+    mutex.lock();
+
+    if (inited_) {
+        mutex.unlock();
+        return;
+    }
     cusolverDnCreate(&cusolver_handle_);
 
     const double tol = 1.e-7;
@@ -45,6 +57,9 @@ BatchedEllipseFitter::BatchedEllipseFitter() {
     checkCUDAError("Could not SetSortEigs");
 
     cublasCreate(&cublas_handle_);
+
+    inited_ = true;
+    mutex.unlock();
 }
 
 
