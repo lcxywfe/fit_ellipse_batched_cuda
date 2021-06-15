@@ -173,39 +173,95 @@ std::vector<cv::RotatedRect> BatchedEllipseFitter::fit(
                batch_size * sample_size * 2 * sizeof(float),
                cudaMemcpyHostToDevice);
 
-    const double min_eps = 1e-8;
-
     float* centers;
     cudaSafeCall(
             cudaMalloc((void**)(&centers), batch_size * 2 * sizeof(float)));
     cudaMemset((void*)centers, 0, batch_size * 2 * sizeof(float));
 
     kernels::get_centers(points, centers, batch_size, sample_size);
-    print_cuda(centers, batch_size * 2, 2);
+    // print_cuda(centers, batch_size * 2, 2);
 
     double* d_A;
     double* d_b;
     double* d_x;
+    double* d_r;
     cudaSafeCall(cudaMalloc((void**)(&d_A),
                             batch_size * sample_size * 5 * sizeof(double)));
     cudaSafeCall(cudaMalloc((void**)(&d_b),
                             batch_size * sample_size * sizeof(double)));
     cudaSafeCall(cudaMalloc((void**)(&d_x), batch_size * 5 * sizeof(double)));
+    cudaSafeCall(cudaMalloc((void**)(&d_r), batch_size * 2 * sizeof(double)));
 
     kernels::fill_param(points, centers, d_A, d_b, batch_size, sample_size);
-
     solve(d_A, d_b, d_x, 5, batch_size, sample_size);
+    // print_cuda(d_x, batch_size * 5, 5);
 
+    kernels::fill_param2(d_x, d_A, d_b, batch_size);
+    solve(d_A, d_b, d_r, 2, batch_size, 2);
+    // print_cuda(d_r, batch_size * 2, 2);
 
-    print_cuda(d_x, batch_size * 5, 5);
+    kernels::fill_param3(points, centers, d_r, d_A, d_b, batch_size, sample_size);
+    solve(d_A, d_b, d_x, 3, batch_size, sample_size);
+    // print_cuda(d_x, batch_size * 3, 3);
 
+    cudaDeviceSynchronize();
 
+    const double min_eps = 1e-8;
 
-
+    std::vector<double> h_r(batch_size * 2);
+    std::vector<double> h_x(batch_size * 3);
+    std::vector<float> h_centers(batch_size * 2);
+    cudaSafeCall(cudaMemcpy(h_r.data(), d_r, batch_size * 2 * sizeof(double),
+                            cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy(h_x.data(), d_x, batch_size * 3 * sizeof(double),
+                            cudaMemcpyDeviceToHost));
+    cudaSafeCall(cudaMemcpy(h_centers.data(), centers,
+                            batch_size * 2 * sizeof(float),
+                            cudaMemcpyDeviceToHost));
+    cudaDeviceSynchronize();
 
     cudaFree(d_A);
     cudaFree(d_b);
     cudaFree(d_x);
+    cudaFree(d_r);
     cudaFree(centers);
     cudaFree(points);
+
+    std::vector<cv::RotatedRect> boxes(0);
+    for (int i = 0; i < batch_size; ++i) {
+        double t,r0 = h_r[i * 2], r1 = h_r[i * 2 + 1], r2, r3, r4;
+        double x0 = h_x[i * 3], x1 = h_x[i * 3 + 1], x2 = h_x[i * 3 + 2];
+
+        r4 = -0.5 * atan2(x2, x1 - x0);
+        if (fabs(x2) > min_eps )
+            t = x2/sin(-2.0 * r4);
+        else
+            t = x1 - x0;
+        r2 = fabs(x0 + x1 - t);
+        if( r2 > min_eps )
+            r2 = std::sqrt(2.0 / r2);
+        r3 = fabs(x0 + x1 + t);
+        if( r3 > min_eps )
+            r3 = std::sqrt(2.0 / r3);
+
+        cv::RotatedRect box;
+        box.center.x = (float)r0 + h_centers[i * 2];
+        box.center.y = (float)r1 + h_centers[i * 2 + 1];
+        box.size.width = (float)(r2*2);
+        box.size.height = (float)(r3*2);
+        if( box.size.width > box.size.height )
+        {
+            float tmp;
+            CV_SWAP( box.size.width, box.size.height, tmp );
+            box.angle = (float)(90 + r4*180/CV_PI);
+        }
+        if( box.angle < -180 )
+            box.angle += 360;
+        if( box.angle > 360 )
+            box.angle -= 360;
+        printf("box: %f %f %f %f %f\n", box.center.x, box.center.y, box.size.width, box.size.height, box.angle);
+        boxes.push_back(box);
+    }
+
+    return boxes;
 }

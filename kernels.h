@@ -13,4 +13,9 @@ void fill_param(float* points, float* centers, double* A, double* b,
 
 void element_wise_div(double* A, double* B, int size);
 
+void fill_param2(double* x, double* A, double* b, int batch_size);
+
+void fill_param3(float* points, float* centers, double* r, double* A, double* b,
+                 int batch_size, int sample_size);
+
 }  // namespace kernels
