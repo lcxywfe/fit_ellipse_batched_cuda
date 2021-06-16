@@ -22,8 +22,8 @@ __global__ void get_centers_kernel(float* points, float* centers,
     }
 }
 
-__global__ void fill_param_kernel(float* points, float* centers, double* A,
-                                  double* b, int batch_size, int sample_size) {
+__global__ void fill_param_kernel(float* points, float* centers, float* A,
+                                  float* b, int batch_size, int sample_size) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     while (index < batch_size * sample_size) {
         int batch_id = index / sample_size;
@@ -31,9 +31,9 @@ __global__ void fill_param_kernel(float* points, float* centers, double* A,
         float x = points[index * 2] - centers[batch_id * 2];
         float y = points[index * 2 + 1] - centers[batch_id * 2 + 1];
         int sample_offset = batch_id * sample_size * 5 + sample_id;
-        A[sample_offset] = -(double)x * (double)x;
-        A[sample_offset + sample_size] = -(double)y * (double)y;
-        A[sample_offset + sample_size * 2] = -(double)x * (double)y;
+        A[sample_offset] = -(float)x * (float)x;
+        A[sample_offset + sample_size] = -(float)y * (float)y;
+        A[sample_offset + sample_size * 2] = -(float)x * (float)y;
         A[sample_offset + sample_size * 3] = x;
         A[sample_offset + sample_size * 4] = y;
         b[index] = 10000.0;
@@ -42,7 +42,7 @@ __global__ void fill_param_kernel(float* points, float* centers, double* A,
     }
 }
 
-__global__ void fill_param_kernel_2(double* x, double* A, double* b,
+__global__ void fill_param_kernel_2(float* x, float* A, float* b,
                                     int batch_size) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     while (index < batch_size) {
@@ -56,18 +56,18 @@ __global__ void fill_param_kernel_2(double* x, double* A, double* b,
     }
 }
 
-__global__ void fill_param_kernel_3(float* points, float* centers, double* r,
-                                    double* A, double* b, int batch_size,
+__global__ void fill_param_kernel_3(float* points, float* centers, float* r,
+                                    float* A, float* b, int batch_size,
                                     int sample_size) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     while (index < batch_size * sample_size) {
         int batch_id = index / sample_size;
         int sample_id = index - batch_id * sample_size;
-        double x = points[index * 2] - centers[batch_id * 2];
-        double y = points[index * 2 + 1] - centers[batch_id * 2 + 1];
+        float x = points[index * 2] - centers[batch_id * 2];
+        float y = points[index * 2 + 1] - centers[batch_id * 2 + 1];
         int sample_offset = batch_id * sample_size * 3 + sample_id;
-        double r0 = r[batch_id * 2];
-        double r1 = r[batch_id * 2 + 1];
+        float r0 = r[batch_id * 2];
+        float r1 = r[batch_id * 2 + 1];
         A[sample_offset] = (x - r0) * (x - r0);
         A[sample_offset + sample_size] = (y - r1) * (y - r1);
         A[sample_offset + sample_size * 2] = (x - r0) * (y - r1);
@@ -77,11 +77,11 @@ __global__ void fill_param_kernel_3(float* points, float* centers, double* r,
     }
 }
 
-__global__ void element_wise_div_kernel(double* A, double* B, int size) {
+__global__ void element_wise_div_kernel(float* A, float* B, int size) {
     const int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index >= size)
         return;
-    double val = B[index];
+    float val = B[index];
     if (val == 0)
         A[index] = 0;
     else
@@ -97,7 +97,7 @@ void kernels::get_centers(float* points, float* centers, int batch_size,
                                                   sample_size);
 }
 
-void kernels::fill_param(float* points, float* centers, double* A, double* b,
+void kernels::fill_param(float* points, float* centers, float* A, float* b,
                          int batch_size, int sample_size) {
     int grid =
             (batch_size * sample_size + CUDA_BLOCK_SIZE - 1) / CUDA_BLOCK_SIZE;
@@ -106,20 +106,20 @@ void kernels::fill_param(float* points, float* centers, double* A, double* b,
 }
 
 
-void kernels::fill_param2(double* x, double* A, double* b, int batch_size) {
+void kernels::fill_param2(float* x, float* A, float* b, int batch_size) {
     int grid = (batch_size + CUDA_BLOCK_SIZE - 1) / CUDA_BLOCK_SIZE;
     fill_param_kernel_2<<<grid, CUDA_BLOCK_SIZE>>> (x, A, b, batch_size);
 }
 
-void kernels::fill_param3(float* points, float* centers, double* r, double* A,
-                          double* b, int batch_size, int sample_size) {
+void kernels::fill_param3(float* points, float* centers, float* r, float* A,
+                          float* b, int batch_size, int sample_size) {
     int grid =
             (batch_size * sample_size + CUDA_BLOCK_SIZE - 1) / CUDA_BLOCK_SIZE;
     fill_param_kernel_3<<<grid, CUDA_BLOCK_SIZE>>>(points, centers, r, A, b,
                                                    batch_size, sample_size);
 }
 
-void kernels::element_wise_div(double* A, double* B, int size) {
+void kernels::element_wise_div(float* A, float* B, int size) {
     int grid = (size + CUDA_BLOCK_SIZE - 1) / CUDA_BLOCK_SIZE;
     element_wise_div_kernel<<<grid, CUDA_BLOCK_SIZE>>>(A, B, size);
 }

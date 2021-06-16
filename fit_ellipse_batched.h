@@ -10,11 +10,11 @@ public:
     std::vector<cv::RotatedRect> fit(
             std::vector<std::vector<cv::Point2f>> batched_points);
 private:
-    void svd_with_col_major_input(double* src, double* U, double* S, double* V,
+    void svd_with_col_major_input(float* src, float* U, float* S, float* V,
                                   int m, int n, const int batchSize,
                                   int* d_info);
 
-    void solve(double* A, double* b, double* x, int x_num, int batch_size,
+    void solve(float* A, float* b, float* x, int x_num, int batch_size,
                int sample_size);
 
     static void init();

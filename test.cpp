@@ -50,24 +50,33 @@ int main() {
     findContours(img, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
     vector<RotatedRect> ellipses;
 
+    // int tot = contours.size();
+    // for (int i = 0; i < tot; ++i)
+    //     for (int j = 0; j < 200; ++j)
+    //         contours.push_back(contours[i]);
+
 
     {
+        std::vector<RotatedRect> boxes;
         Timer timer;
         timer.reset();
         timer.start();
-        Mat img(Size(800,500), CV_8UC3);
         for (unsigned i = 0; i<contours.size(); i++) {
             if (contours[i].size() >= 6) {
-                printf("%zu\n", contours[i].size());
-                while (contours[i].size() > 32)
+                while (contours[i].size() > 30)
                     contours[i].pop_back();
                 RotatedRect temp = fitEllipse(Mat(contours[i]));
-                drawContours(img, contours, i, Scalar(255,0,0), -1, 8);
-                ellipse(img, temp, Scalar(0,255,255), 2, 8);
+                boxes.push_back(temp);
+                // drawContours(img, contours, i, Scalar(255,0,0), -1, 8);
             }
         }
         timer.stop();
+        std::cout << boxes.size() << std::endl;
         std::cout << "time: " << timer.get_time_in_ms() << std::endl;
+        Mat img(Size(800,500), CV_8UC3);
+        for (int i = 0; i < boxes.size(); ++i)
+            ellipse(img, boxes[i], Scalar(0,255,255), 2, 8);
+
 
         imwrite("out.png", img);
     }
@@ -77,7 +86,7 @@ int main() {
 
         for (int b  = 0; b < contours.size(); ++b) {
             batched_points.push_back(std::vector<Point2f>(0));
-            for (int i = 0; i < min(int(contours[b].size()), 32); ++i) {
+            for (int i = 0; i < min(int(contours[b].size()), 30); ++i) {
                 batched_points.back().emplace_back(contours[b][i].x, contours[b][i].y);
             }
         }
@@ -85,8 +94,9 @@ int main() {
         timer.reset();
         BatchedEllipseFitter fitter;
         timer.start();
-        fitter.fit(batched_points);
+        auto boxes = fitter.fit(batched_points);
         timer.stop();
+        std::cout << boxes.size() << std::endl;
         std::cout << "time: " << timer.get_time_in_ms() << std::endl;
 
     }
